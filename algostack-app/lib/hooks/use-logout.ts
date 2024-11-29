@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useSelector } from "react-redux";
 import algorandGlobalSelectors from "@/dashboard/redux/algorand/global/globalSelectors";
-import { debounce} from "lodash";
+import { debounce } from "lodash";
 import { useSIWA } from "@/use-siwa";
 import { siweConfig } from "@/algostack-app/contexts/web3/evm-context";
 import { useWalletConnection } from "@/algostack-app/contexts/wallet-connection-context";
@@ -12,7 +12,7 @@ export const useLogout = () => {
   const [signingOut, setSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState(null);
   const globalPipeState = useSelector(
-    algorandGlobalSelectors.selectCurrentPipeConnectState,
+    algorandGlobalSelectors.selectCurrentPipeConnectState
   );
 
   // Wrap pipeState initialization in its own useMemo
@@ -22,7 +22,7 @@ export const useLogout = () => {
   const { signOut: signOutWithSIWE, data: siweData } = useSIWE();
 
   const { disconnectWallet: signOutWithPipeline } = useWalletConnection();
-  const urlCallback = "/"
+  const urlCallback = "/";
 
   // Create the debounced function using useMemo
   const debouncedDisconnect = useMemo(
@@ -47,11 +47,7 @@ export const useLogout = () => {
             siweData.address = null; // Reflect that the address is now null
           }
 
-          if (
-            !siwaData?.address &&
-            !pipeState.address &&
-            !siweData?.address
-          ) {
+          if (!siwaData?.address && !pipeState.address && !siweData?.address) {
             setSigningOut(true);
             await signOut({
               callbackUrl: urlCallback,
@@ -61,7 +57,7 @@ export const useLogout = () => {
             console.log(
               "Either SIWA or Pipeline state address was found, not calling signOut",
               siwaData?.address,
-              pipeState.address,
+              pipeState.address
             );
           }
         } catch (error) {
@@ -69,7 +65,14 @@ export const useLogout = () => {
           setLogoutError("Failed to log out. Please try again." as any);
         }
       }, 300),
-    [siwaData, pipeState, signOutWithSIWA, signOutWithPipeline],
+    [
+      siwaData,
+      pipeState,
+      siweData,
+      signOutWithSIWA,
+      signOutWithPipeline,
+      signOutWithSIWE,
+    ]
   );
 
   // Memoize the debounced function with useCallback

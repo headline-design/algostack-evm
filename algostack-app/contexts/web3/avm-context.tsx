@@ -9,7 +9,6 @@ import { SIWAConfig, SIWAProvider } from "@/use-siwa";
 export interface SIWACreateMessageArgs {
   nonce: string;
   address: string;
-  algoAddress: string;
   chainId: number;
 }
 
@@ -86,64 +85,55 @@ export const siwaConfig: SIWAConfig = {
       nonce,
       chainId,
       address,
-      version: '1',
+      version: "1",
       uri: typeof window !== "undefined" ? window.location.origin : "",
       domain: typeof window !== "undefined" ? window.location.host : "",
     }).prepareMessage(),
 
-    verifyMessage: async ({
-      message,
-      signature,
-      address,
-      algoAddress,
-      algoSignature,
-      nfd,
-    }: {
-      message: string | Uint8Array;
-      signature: string;
-      address: string;
-      algoAddress: string;
-      algoSignature: string;
-      nfd?: string;
-    }) => {
-      const res = await fetch(`/api/siwa`, {
-        method: 'POST',
-        body: JSON.stringify({
-          message: JSON.stringify(message),
-          address,
-          algoAddress,
-          algoSignature,
-          nfd,
-          signature,
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!res.ok) throw new Error('Failed to fetch SIWA session');
-
-      return await signIn("algorand", {
+  verifyMessage: async ({
+    message,
+    signature,
+    nfd,
+    provider,
+  }: {
+    message: string | Uint8Array;
+    signature: string;
+    nfd?: string;
+    provider?: string;
+  }) => {
+    const res = await fetch(`/api/siwa`, {
+      method: "POST",
+      body: JSON.stringify({
         message: JSON.stringify(message),
-        address,
-        algoAddress,
-        algoSignature,
         nfd,
-        redirect: false,
         signature,
-        callbackUrl: currentCallbackUrl,
-      }).then((res) => res?.ok as boolean);
-    },
+        provider,
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
 
-    getSession: async () => {
-      const res = await fetch(`/api/siwa`);
+    if (!res.ok) throw new Error("Failed to fetch SIWA session");
 
-      if (!res.ok) throw new Error('Failed to fetch SIWA session');
-      const { address, chainId } = await res.json();
+    return await signIn("algorand", {
+      message: JSON.stringify(message),
+      nfd,
+      provider,
+      redirect: false,
+      signature,
+      callbackUrl: currentCallbackUrl,
+    }).then((res) => res?.ok as boolean);
+  },
 
+  getSession: async () => {
+    const res = await fetch(`/api/siwa`);
 
-      return address && chainId ? { address, chainId } : null;
-    },
-    signOut: () => fetch(`/api/siwa`, { method: 'DELETE' }).then((res) => res.ok),
-  };
+    if (!res.ok) throw new Error("Failed to fetch SIWA session");
+    const { address, chainId } = await res.json();
+
+    return address && chainId ? { address, chainId } : null;
+  },
+  signOut: () => fetch(`/api/siwa`, { method: "DELETE" }).then((res) => res.ok),
+};
 
 export const Web3Contextual = (props: NFTContractProviderProps) => {
   const { children } = props;

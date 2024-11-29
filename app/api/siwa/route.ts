@@ -19,7 +19,7 @@ export const PUT = async (req: NextRequest): Promise<NextResponse> => {
 };
 
 export const POST = async (req: NextRequest) => {
-  const { message, signature, algoAddress, algoSignature, nfd } =
+  const { message, signature, provider, nfd } =
     await req.json();
 
   const session = await SiwaSession.fromRequest(req);
@@ -34,17 +34,22 @@ export const POST = async (req: NextRequest) => {
     const verifyData: any = {
       signature: signature,
       domain: validDomain,
-      algoAddress: algoAddress,
-      algoSignature: algoSignature || "",
+      provider: provider,
       nonce: session.nonce,
     };
+
+    console.log("verifyData", verifyData);
 
     if (nfd) {
       verifyData.nfd = nfd;
     }
 
+    console.log("verifyData", verifyData);
+
     // VerifyParams
     const { data: fields } = await siwa.verify({ ...verifyData });
+
+    console.log("fields", fields);
 
     if (fields.nonce !== session.nonce) {
       return tap(new NextResponse("Invalid nonce.", { status: 422 }), (res) =>
@@ -53,7 +58,7 @@ export const POST = async (req: NextRequest) => {
     }
 
     //@ts-ignore
-    session.address = fields.algoAddress;
+    session.address = fields.address;
     session.chainId = fields.chainId;
     session.nonce = undefined;
   } catch (error) {

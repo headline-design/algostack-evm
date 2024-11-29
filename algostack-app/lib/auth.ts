@@ -13,30 +13,26 @@ import { getSearchParams } from '@/dashboard/lib/utils';
 import { hashToken } from './crypto';
 import { ratelimit } from './upstash';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { getCsrfToken } from 'next-auth/react';
 import { SiwaMessage } from '@avmkit/siwa';
 import { SiweMessage } from 'siwe';
 
 const VERCEL_DEPLOYMENT = !!process.env.VERCEL_URL;
 
 interface Credentials {
-  algoSignature?: string;
   message?: string;
   signature?: string;
-  algoAddress?: string;
+  address?: string;
   nfd?: string;
 }
 
 export interface SIWAResult {
   success: boolean;
   data: {
-    algoAddress?: string;
     address?: string;
     chainId?: any;
     domain?: string;
     message?: string;
     signature?: string;
-    algoSignature?: string;
     nfd?: string;
   };
 }
@@ -83,27 +79,21 @@ export const authOptions: NextAuthOptions = {
           type: "text",
           placeholder: "example.com",
         },
-        algoAddress: {
-          label: "Algorand Address",
+        provider: {
+          label: "Provider",
           type: "text",
-          placeholder: "0x0",
-        },
-        algoSignature: {
-          label: "Algorand Signature",
-          type: "text",
-          placeholder: "0x0",
+          placeholder: "Unknown",
         },
         nfd: {
           label: "NFD",
           type: "text",
           placeholder: "HELLO_WORLD",
         },
+
       },
       async authorize(credentials, req) {
         try {
-          const siwa = new SiwaMessage(
-            JSON.parse(credentials?.message || "{}"),
-          );
+          const siwa = new SiwaMessage(JSON.parse(credentials.message || "{}"));
           const nextAuthUrl = new URL(process.env.NEXTAUTH_URL || "");
           const validDomain =
             siwa?.domain === nextAuthUrl.host ? nextAuthUrl.host : undefined;
@@ -111,22 +101,23 @@ export const authOptions: NextAuthOptions = {
           const verifyData: any = {
             signature: credentials.signature,
             domain: validDomain,
-            algoAddress: credentials?.algoAddress || "",
-            algoSignature: credentials?.algoSignature || "",
             nonce: siwa?.nonce,
+            provider: credentials.provider,
           };
 
-          if (credentials.nfd) {
+          console.log("VerifyData", verifyData);
+
+          if (credentials?.nfd && credentials.nfd !== "null" && credentials.nfd !== "undefined") {
             verifyData.nfd = credentials.nfd;
           }
 
           // VerifyParams
-          const result: any = await siwa.verify({
-            ...verifyData,
-          });
+          const { data: fields, success } = await siwa.verify({ ...verifyData });
 
-          if (result.success) {
-            const authResult = await handleWalletAuth(result.data, "AVM");
+          console.log("result", success);
+
+          if (fields && success) {
+            const authResult = await handleWalletAuth(fields, "AVM");
             return authResult;
           }
         } catch (error) {
@@ -225,7 +216,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        domain: VERCEL_DEPLOYMENT ? ".atlas.box" : ".localhost", // for local development explicitly set the local host domain (i/e home.localhost - not just .localhost (i dont know why this is necessary)). But if on local and root then just use .localhost
+        domain: VERCEL_DEPLOYMENT ? "algostack-evm.vercel.app" : "localhost",
         secure: VERCEL_DEPLOYMENT,
       },
     },
@@ -299,7 +290,7 @@ async function handleWalletAuth(
 ) {
   const address =
     vm === "AVM"
-      ? data.algoAddress
+      ? data.address
       : vm === "EVM"
         ? data.address
         : data.address;
